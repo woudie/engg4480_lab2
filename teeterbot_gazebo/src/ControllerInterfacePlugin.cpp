@@ -1,10 +1,8 @@
 #include "ControllerInterfacePlugin.h"
 
-namespace gazebo
-{
+namespace gazebo {
 
-ControllerInterfacePlugin::ControllerInterfacePlugin()
-{
+ControllerInterfacePlugin::ControllerInterfacePlugin() {
   fallen_over_ = false;
   fallen_over_stamp_ = 0;
   left_cmd_ = 0;
@@ -27,8 +25,7 @@ ControllerInterfacePlugin::ControllerInterfacePlugin()
 #endif
 }
 
-ControllerInterfacePlugin::~ControllerInterfacePlugin()
-{
+ControllerInterfacePlugin::~ControllerInterfacePlugin() {
   left_motor_.reset();
   right_motor_.reset();
   left_control_.reset();
@@ -37,12 +34,10 @@ ControllerInterfacePlugin::~ControllerInterfacePlugin()
   delete n_;
 }
 
-void ControllerInterfacePlugin::Reset()
-{
-}
+void ControllerInterfacePlugin::Reset() {}
 
-void ControllerInterfacePlugin::Load(physics::ModelPtr model, sdf::ElementPtr sdf)
-{
+void ControllerInterfacePlugin::Load(physics::ModelPtr model,
+                                     sdf::ElementPtr sdf) {
   // Gazebo setup
   model_ = model;
   left_wheel_joint_ = model->GetJoint("left_wheel");
@@ -69,7 +64,8 @@ void ControllerInterfacePlugin::Load(physics::ModelPtr model, sdf::ElementPtr sd
     return;
   }
 
-  update_connection_ = event::Events::ConnectWorldUpdateBegin(boost::bind(&ControllerInterfacePlugin::OnUpdate, this, _1));
+  update_connection_ = event::Events::ConnectWorldUpdateBegin(
+      boost::bind(&ControllerInterfacePlugin::OnUpdate, this, _1));
 
   // Load SDF parameters
   if (sdf->HasElement("pubGroundTruth")) {
@@ -80,10 +76,12 @@ void ControllerInterfacePlugin::Load(physics::ModelPtr model, sdf::ElementPtr sd
 
   // Auto-reset parameters
   if (sdf->HasElement("autoResetOrientation")) {
-    sdf->GetElement("autoResetOrientation")->GetValue()->Get(auto_reset_orientation_);
-    if (auto_reset_orientation_){
+    sdf->GetElement("autoResetOrientation")
+        ->GetValue()
+        ->Get(auto_reset_orientation_);
+    if (auto_reset_orientation_) {
       ROS_INFO("Resetting orientation automatically");
-    }else{
+    } else {
       ROS_INFO("Not resetting orientation automatically");
     }
   } else {
@@ -92,7 +90,8 @@ void ControllerInterfacePlugin::Load(physics::ModelPtr model, sdf::ElementPtr sd
 
   if (sdf->HasElement("autoResetDelay") && auto_reset_orientation_) {
     sdf->GetElement("autoResetDelay")->GetValue()->Get(auto_reset_delay_);
-    ROS_INFO("Will wait %f seconds before resetting orientation", auto_reset_delay_);
+    ROS_INFO("Will wait %f seconds before resetting orientation",
+             auto_reset_delay_);
   } else {
     auto_reset_delay_ = 2.0;
   }
@@ -103,7 +102,8 @@ void ControllerInterfacePlugin::Load(physics::ModelPtr model, sdf::ElementPtr sd
     sdf->GetElement("bodyLength")->GetValue()->Get(nudge_offset_.Z());
     ROS_INFO("Will apply nudge force at top of robot");
   } else {
-    ROS_WARN("No body length specified! Nudge force applied 0.5 meters above base");
+    ROS_WARN(
+        "No body length specified! Nudge force applied 0.5 meters above base");
     nudge_offset_.Z(0.5);
   }
   nudge_offset_.X(0);
@@ -113,7 +113,8 @@ void ControllerInterfacePlugin::Load(physics::ModelPtr model, sdf::ElementPtr sd
     sdf->GetElement("bodyLength")->GetValue()->Get(nudge_offset_.z);
     ROS_INFO("Will apply nudge force at top of robot");
   } else {
-    ROS_WARN("No body length specified! Nudge force applied 0.5 meters above base");
+    ROS_WARN(
+        "No body length specified! Nudge force applied 0.5 meters above base");
     nudge_offset_.z = 0.5;
   }
   nudge_offset_.x = 0;
@@ -156,21 +157,28 @@ void ControllerInterfacePlugin::Load(physics::ModelPtr model, sdf::ElementPtr sd
 
   // ROS setup
   n_ = new ros::NodeHandle(model->GetName());
-  left_motor_.reset(new teeterbot_gazebo::DcMotorSim(ros::NodeHandle(*n_, "left_motor"), left_wheel_joint_, left_wheel_link_));
-  right_motor_.reset(new teeterbot_gazebo::DcMotorSim(ros::NodeHandle(*n_, "right_motor"), right_wheel_joint_, right_wheel_link_));
+  left_motor_.reset(new teeterbot_gazebo::DcMotorSim(
+      ros::NodeHandle(*n_, "left_motor"), left_wheel_joint_, left_wheel_link_));
+  right_motor_.reset(
+      new teeterbot_gazebo::DcMotorSim(ros::NodeHandle(*n_, "right_motor"),
+                                       right_wheel_joint_, right_wheel_link_));
 
   if (voltage_mode_) {
     ROS_INFO("Using voltage mode");
   }
   if (torque_mode_) {
     ROS_INFO("Using torque mode");
-    left_control_.reset(new teeterbot_gazebo::MotorController(*n_, ros::NodeHandle("~"), "left_torque_control"));
-    right_control_.reset(new teeterbot_gazebo::MotorController(*n_, ros::NodeHandle("~"), "right_torque_control"));
+    left_control_.reset(new teeterbot_gazebo::MotorController(
+        *n_, ros::NodeHandle("~"), "left_torque_control"));
+    right_control_.reset(new teeterbot_gazebo::MotorController(
+        *n_, ros::NodeHandle("~"), "right_torque_control"));
   }
   if (speed_mode_) {
     ROS_INFO("Using speed mode");
-    left_control_.reset(new teeterbot_gazebo::MotorController(*n_, ros::NodeHandle("~"), "left_speed_control"));
-    right_control_.reset(new teeterbot_gazebo::MotorController(*n_, ros::NodeHandle("~"), "right_speed_control"));
+    left_control_.reset(new teeterbot_gazebo::MotorController(
+        *n_, ros::NodeHandle("~"), "left_speed_control"));
+    right_control_.reset(new teeterbot_gazebo::MotorController(
+        *n_, ros::NodeHandle("~"), "right_speed_control"));
   }
 
   pub_left_encoder_ = n_->advertise<std_msgs::Float64>("left_wheel_speed", 1);
@@ -191,12 +199,18 @@ void ControllerInterfacePlugin::Load(physics::ModelPtr model, sdf::ElementPtr sd
     left_cmd_topic = "left_speed_cmd";
     right_cmd_topic = "right_speed_cmd";
   }
-  sub_left_cmd_ = n_->subscribe<std_msgs::Float64>(left_cmd_topic, 1, boost::bind(&ControllerInterfacePlugin::recvMotorCmd, this, _1, 0));
-  sub_right_cmd_ = n_->subscribe<std_msgs::Float64>(right_cmd_topic, 1, boost::bind(&ControllerInterfacePlugin::recvMotorCmd, this, _1, 1));
+  sub_left_cmd_ = n_->subscribe<std_msgs::Float64>(
+      left_cmd_topic, 1,
+      boost::bind(&ControllerInterfacePlugin::recvMotorCmd, this, _1, 0));
+  sub_right_cmd_ = n_->subscribe<std_msgs::Float64>(
+      right_cmd_topic, 1,
+      boost::bind(&ControllerInterfacePlugin::recvMotorCmd, this, _1, 1));
 
-  nudge_srv_ = n_->advertiseService("nudge", &ControllerInterfacePlugin::nudgeCb, this);
+  nudge_srv_ =
+      n_->advertiseService("nudge", &ControllerInterfacePlugin::nudgeCb, this);
 
-  data_100Hz_timer_ = n_->createTimer(ros::Duration(0.01), &ControllerInterfacePlugin::data100Cb, this);
+  data_100Hz_timer_ = n_->createTimer(
+      ros::Duration(0.01), &ControllerInterfacePlugin::data100Cb, this);
 
   left_cmd_ = 0.0;
   right_cmd_ = 0.0;
@@ -207,8 +221,8 @@ void ControllerInterfacePlugin::Load(physics::ModelPtr model, sdf::ElementPtr sd
   fallen_over_ = false;
 }
 
-void ControllerInterfacePlugin::recvMotorCmd(const std_msgs::Float64ConstPtr &msg, int side)
-{
+void ControllerInterfacePlugin::recvMotorCmd(
+    const std_msgs::Float64ConstPtr &msg, int side) {
   if (side == 0) { // left
     left_cmd_ = msg->data;
   } else { // right
@@ -216,8 +230,7 @@ void ControllerInterfacePlugin::recvMotorCmd(const std_msgs::Float64ConstPtr &ms
   }
 }
 
-void ControllerInterfacePlugin::data100Cb(const ros::TimerEvent &event)
-{
+void ControllerInterfacePlugin::data100Cb(const ros::TimerEvent &event) {
   std_msgs::Float64 left_encoder_msg;
   std_msgs::Float64 right_encoder_msg;
   std_msgs::Float64 left_current_msg;
@@ -234,8 +247,7 @@ void ControllerInterfacePlugin::data100Cb(const ros::TimerEvent &event)
   pub_right_current_.publish(right_current_msg);
 }
 
-void ControllerInterfacePlugin::OnUpdate(const common::UpdateInfo &info)
-{
+void ControllerInterfacePlugin::OnUpdate(const common::UpdateInfo &info) {
 #if GAZEBO_MAJOR_VERSION >= 9
   ignition::math::Pose3d pose = body_link_->WorldPose();
 #else
@@ -245,23 +257,25 @@ void ControllerInterfacePlugin::OnUpdate(const common::UpdateInfo &info)
   double roll, pitch, yaw;
   getEuler(roll, pitch, yaw);
 
-  // Detect if fallen over
-  if (!fallen_over_ && fabs(pitch) > M_PI_4) {
+  // Detect if fallen over was M_PI_4
+  if (!fallen_over_ && fabs(pitch) > 0.75) {
     std_msgs::Bool fallen_over_msg;
     fallen_over_msg.data = true;
     pub_fallen_over_.publish(fallen_over_msg);
     fallen_over_stamp_ = info.simTime.Double();
-  } else if (fallen_over_ && fabs(pitch) <= M_PI_4) {
+  } else if (fallen_over_ && fabs(pitch) <= 0.75) {
     std_msgs::Bool fallen_over_msg;
     fallen_over_msg.data = false;
     pub_fallen_over_.publish(fallen_over_msg);
   }
-  fallen_over_ = fabs(pitch) > M_PI_4;
+  fallen_over_ = fabs(pitch) > 0.75;
 
   // Reset orientation if enabled and conditions are met
-  if (auto_reset_orientation_ && fallen_over_ && (info.simTime.Double() - fallen_over_stamp_) > auto_reset_delay_){
+  if (auto_reset_orientation_ && fallen_over_ &&
+      (info.simTime.Double() - fallen_over_stamp_) > auto_reset_delay_) {
 #if GAZEBO_MAJOR_VERSION >= 9
-    model_->SetWorldPose(ignition::math::Pose3d(pose.Pos().X(), pose.Pos().Y(), pose.Pos().Z(), 0.0, 0.0, yaw));
+    model_->SetWorldPose(ignition::math::Pose3d(pose.Pos().X(), pose.Pos().Y(),
+                                                pose.Pos().Z(), 0.0, 0.0, yaw));
 #else
     model_->SetWorldPose(math::Pose(pose.pos, math::Quaternion(0.0, 0.0, yaw)));
 #endif
@@ -277,8 +291,10 @@ void ControllerInterfacePlugin::OnUpdate(const common::UpdateInfo &info)
     right_voltage = right_cmd_;
   } else {
     if (torque_mode_) {
-      left_feedback = left_motor_->current_ * left_motor_->props_.torque_constant;
-      right_feedback = right_motor_->current_ * right_motor_->props_.torque_constant;
+      left_feedback =
+          left_motor_->current_ * left_motor_->props_.torque_constant;
+      right_feedback =
+          right_motor_->current_ * right_motor_->props_.torque_constant;
     } else {
       left_feedback = left_wheel_joint_->GetVelocity(0);
       right_feedback = right_wheel_joint_->GetVelocity(0);
@@ -303,7 +319,8 @@ void ControllerInterfacePlugin::OnUpdate(const common::UpdateInfo &info)
 #endif
   ignition::math::Quaternion<double> rollpitch;
   rollpitch.Euler(roll, pitch, 0.0);
-  footprint_link_transform.setRotation(tf::Quaternion(rollpitch.X(), rollpitch.Y(), rollpitch.Z(), rollpitch.W()));
+  footprint_link_transform.setRotation(tf::Quaternion(
+      rollpitch.X(), rollpitch.Y(), rollpitch.Z(), rollpitch.W()));
   broadcaster_.sendTransform(footprint_link_transform);
 
   // Apply nudge force
@@ -320,7 +337,8 @@ void ControllerInterfacePlugin::OnUpdate(const common::UpdateInfo &info)
     body_link_->AddLinkForce(nudge_force_, nudge_offset_);
   } else {
 #if GAZEBO_MAJOR_VERSION >= 9
-    body_link_->AddLinkForce(ignition::math::Vector3d(), ignition::math::Vector3d());
+    body_link_->AddLinkForce(ignition::math::Vector3d(),
+                             ignition::math::Vector3d());
 #else
     math::Vector3 zero;
     body_link_->AddLinkForce(zero, zero);
@@ -334,17 +352,20 @@ void ControllerInterfacePlugin::OnUpdate(const common::UpdateInfo &info)
     ground_truth_transform.frame_id_ = "world";
     ground_truth_transform.stamp_.fromSec(info.simTime.Double());
 #if GAZEBO_MAJOR_VERSION >= 9
-    ground_truth_transform.setOrigin(tf::Vector3(pose.Pos().X(), pose.Pos().Y(), 0.0));
+    ground_truth_transform.setOrigin(
+        tf::Vector3(pose.Pos().X(), pose.Pos().Y(), 0.0));
 #else
     ground_truth_transform.setOrigin(tf::Vector3(pose.pos.x, pose.pos.y, 0.0));
 #endif
-    ground_truth_transform.setRotation(tf::Quaternion(0.0, 0.0, sin(0.5 * yaw), cos(0.5 * yaw)));
+    ground_truth_transform.setRotation(
+        tf::Quaternion(0.0, 0.0, sin(0.5 * yaw), cos(0.5 * yaw)));
     broadcaster_.sendTransform(ground_truth_transform);
   }
 }
 
-bool ControllerInterfacePlugin::nudgeCb(teeterbot_gazebo::NudgeTeeterbotRequest &req, teeterbot_gazebo::NudgeTeeterbotResponse &res)
-{
+bool ControllerInterfacePlugin::nudgeCb(
+    teeterbot_gazebo::NudgeTeeterbotRequest &req,
+    teeterbot_gazebo::NudgeTeeterbotResponse &res) {
   nudge_duration_ = (req.duration == 0 ? 0.1 : req.duration);
 #if GAZEBO_MAJOR_VERSION >= 9
   nudge_force_.Set(req.force, 0, 0);
@@ -357,11 +378,12 @@ bool ControllerInterfacePlugin::nudgeCb(teeterbot_gazebo::NudgeTeeterbotRequest 
   return true;
 }
 
-void ControllerInterfacePlugin::getEuler(double &roll, double &pitch, double &yaw)
-{
+void ControllerInterfacePlugin::getEuler(double &roll, double &pitch,
+                                         double &yaw) {
 #if GAZEBO_MAJOR_VERSION >= 9
   ignition::math::Pose3d pose = body_link_->WorldPose();
-  ignition::math::Quaternion<double> ignition_orientation(pose.Rot().W(), pose.Rot().X(), pose.Rot().Y(), pose.Rot().Z());
+  ignition::math::Quaternion<double> ignition_orientation(
+      pose.Rot().W(), pose.Rot().X(), pose.Rot().Y(), pose.Rot().Z());
   roll = ignition_orientation.Roll();
   pitch = ignition_orientation.Pitch();
   yaw = ignition_orientation.Yaw();
@@ -393,7 +415,8 @@ void ControllerInterfacePlugin::getEuler(double &roll, double &pitch, double &ya
   }
 #else
   math::Pose pose = body_link_->GetWorldPose();
-  ignition::math::Quaternion<double> ignition_orientation(pose.rot.w, pose.rot.x, pose.rot.y, pose.rot.z);
+  ignition::math::Quaternion<double> ignition_orientation(
+      pose.rot.w, pose.rot.x, pose.rot.y, pose.rot.z);
   roll = ignition_orientation.Roll();
   pitch = ignition_orientation.Pitch();
   yaw = ignition_orientation.Yaw();
@@ -425,4 +448,4 @@ void ControllerInterfacePlugin::getEuler(double &roll, double &pitch, double &ya
 #endif
 }
 
-}
+} // namespace gazebo

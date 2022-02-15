@@ -51,7 +51,7 @@
     </plugin>
   </gazebo>
 
-  <xacro:macro name="wheel" params="name y_offset" >
+  <xacro:macro name="wheel" params="name y_offset z_offset *link_pose">
     <link name="${name}" >
       <inertial>
         <origin xyz="0 0 0" rpy="0 0 0"/>
@@ -59,21 +59,21 @@
         <inertia ixx="${wheel_mass/12*(3*wheel_radius*wheel_radius + wheel_thickness*wheel_thickness)}" ixy="0" ixz="0" iyy="${wheel_mass/12*(3*wheel_radius*wheel_radius + wheel_thickness*wheel_thickness)}" iyz="0" izz="${wheel_mass/2 * wheel_radius*wheel_radius}"/>
       </inertial>
       <visual>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <origin xyz="0 0 ${z_offset}" rpy="0 0 0"/>
         <geometry>
           <cylinder radius="${wheel_radius}" length="${wheel_thickness}"/>
         </geometry>
         <material name="grey"/>
       </visual>
       <visual>
-        <origin xyz="0 0 0" rpy="1.5707 0 0"/>
+        <xacro:insert_block name="link_pose" />
         <geometry>
-          <cylinder radius="${wheel_thickness/2 + 0.01}" length="0.07"/>
+            <mesh filename="package://teeterbot_description/meshes/wheel.STL"/>
         </geometry>
         <material name="grey"/>
       </visual>
       <collision name="collision_${name}">
-        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <origin xyz="0 0 ${z_offset}" rpy="0 0 0"/>
         <geometry>
           <cylinder radius="${wheel_radius}" length="${wheel_thickness}"/>
         </geometry>
@@ -87,8 +87,14 @@
     </joint>
   </xacro:macro>
 
-  <wheel name="left_wheel" y_offset="${wheelbase/2}" />
-  <wheel name="right_wheel" y_offset="${-wheelbase/2}" />
+  
+
+  <wheel name="left_wheel" y_offset="${wheelbase/2}" z_offset="-0.03" >
+    <origin xyz="0 0.06 -0.37" rpy="0 3.1415 0"/>
+  </wheel>
+  <wheel name="right_wheel" y_offset="${-wheelbase/2}" z_offset="0.03">
+    <origin xyz="0 0.06 0.37" rpy="0 0 0"/>
+  </wheel>
 
   <link name="body_com">
     <inertial>
@@ -97,10 +103,10 @@
       <inertia ixx="${body_mass/12 * (body_width*body_width + body_length*body_length)}" ixy="0" ixz="0" iyy="${body_mass/12 * (body_length*body_length + body_depth*body_depth)}" iyz="0" izz="${body_mass/12 * (body_width*body_width + body_depth*body_depth)}"/>
     </inertial>
     <visual>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry>
-        <box size="${body_depth} ${body_width} ${body_length}"/>
-      </geometry>
+      <origin xyz="0 0 -${body_length/2 - 0.051225}" rpy="0 0 0"/>
+        <geometry>
+            <mesh filename="package://teeterbot_description/meshes/base.STL"/>
+        </geometry>
       <material name="orange"/>
     </visual>
     <collision name="collision_chassis">

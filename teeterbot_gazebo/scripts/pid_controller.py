@@ -54,9 +54,9 @@ def controller(data):
 	if abs(error) > 5*np.pi/180:
 		pub_left.publish(0)
 		pub_right.publish(0)
-		error_sum = 0;
+		error_sum = 16/np.pi*ki*180*0;
 		error_diff = 0;
-		prev_error =0
+		prev_error = 0;
 
 def target(data):
 	global set_angle

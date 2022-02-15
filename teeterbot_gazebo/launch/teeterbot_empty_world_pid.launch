@@ -14,12 +14,12 @@
     <arg name="start_yaw" value="0.0" />
 
     <!-- Physical properties -->
-    <arg name="body_length" value="0.8" />
-    <arg name="body_width" value="0.3" />
-    <arg name="body_depth" value="0.3" />
-    <arg name="body_mass" value="10.0" />
-    <arg name="wheel_mass" value="1.0" />
-    <arg name="wheel_radius" value="0.2" />
+    <arg name="body_length" value="0.833455" />
+    <arg name="body_width" value="0.5" />
+    <arg name="body_depth" value="0.5" />
+    <arg name="body_mass" value="5.3" />
+    <arg name="wheel_mass" value="9.0" />
+    <arg name="wheel_radius" value="0.1735" />
     <arg name="training_wheels" value="false" />
 
     <!-- Simulation behavior settings -->
